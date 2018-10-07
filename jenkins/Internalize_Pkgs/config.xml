@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <actions/>
+  <description/>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.29">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>P_PKGLIST</name>
+          <description>list of packages to be internalized</description>
+          <defaultValue>chocolatey</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>P_UNC_SHARE</name>
+          <description>internal share for packages artifacts</description>
+          <defaultValue>\\localhost\C$\choco-artifacts</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>P_DST_FOLDER</name>
+          <description>internal share/folder where internalized packages will be copied to</description>
+          <defaultValue>\\localhost\C$\choco-repo</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>P_DST_SRV</name>
+          <description>internal/private choco repository where internalized packages will be pushed to</description>
+          <defaultValue/>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>P_API_KEY</name>
+          <description>api-key for internal choco repository</description>
+          <defaultValue/>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.plugins.powershell.PowerShell plugin="powershell@1.3">
+      <command># PowerShell script to internalize chocolatey packages from the community feed to an internal server using the business edition 'internalize' feature. This script is designed to be run from jenkins, P_* variables are defined in jenkins job!
+
+$pkgs = $env:P_PKGLIST
+$uncshare = $env:P_UNC_SHARE
+$targetfolder = $env:P_DST_FOLDER
+$targetserver = $env:P_DST_SRV
+$apikey = $env:P_API_KEY
+
+$envtmp = $env:temp
+$tmpdir = "$envtmp\chocointernalize"
+$basefeed = "https://chocolatey.org/api/v2/"
+
+function InternalizePkg($pkg) {
+  if ((Test-Path $tmpdir)) {
+    Remove-Item $tmpdir -Recurse -Force -Verbose
+  }
+  New-Item $tmpdir -ItemType Directory -Force -Verbose
+
+  Push-Location $tmpdir
+  choco download --internalize $pkg --resources-location="$uncshare\$pkg" --source="$basefeed" --no-progress
+  $genpkg = ((Get-ChildItem *.nupkg -recurse).FullName)
+  if ($targetfolder) {
+    Write-Output "&gt; copying package '$genpkg' to '$targetfolder'"
+    if (-Not (Test-Path $targetfolder)) {
+      New-Item $targetfolder -ItemType Directory -Force -Verbose
+    }
+    Copy-Item $genpkg $targetfolder -Verbose -ErrorAction "Stop"
+  }
+  else {
+    Write-Output "&gt; pushing package '$genpkg' to '$targetserver'"
+    choco push $genpkg --source="$targetserver" --api-key="$apikey" -Verbose
+  }
+  Write-Output "------------------------------------------------------------------------"
+  Write-Output ""
+  Pop-Location
+}
+
+$pkgs | ForEach-Object {
+  InternalizePkg $_
+}
+
+Remove-Item $tmpdir -Recurse -Force -Verbose</command>
+    </hudson.plugins.powershell.PowerShell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

@@ -1,11 +1,11 @@
 ## Choco + Jenkins CI examples
 
 
-### [Check_4_Pkg_Upgrades](../blob/master/jenkins/Check_4_Pkg_Upgrades) 
+### [Check_4_Pkg_Upgrades](../jenkins/Check_4_Pkg_Upgrades) 
 A job that notifies a mail recipient if packages could be upgraded on the executing Jenkins slave.
 
 
-### [Internalize_Pkgs](../blob/master/jenkins/Internalize_Pkgs) 
+### [Internalize_Pkgs](../jenkins/Internalize_Pkgs) 
 A job that pulls packages (and it's dependencies) from the community repository and pushes it onto a local repository and/or folder.
 
 ## Additional References
